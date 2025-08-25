@@ -1,40 +1,41 @@
 import streamlit as st
-import ffmpeg
-import openai
-import tempfile
-import os
+from prompt import OpenAIConfig
 
 
-api_key = "api_key"
-openai.api_key = api_key
+api_key = "api-key"
+openai_config = OpenAIConfig(api_key=api_key)
 
-def extract_audio_from_video(uploaded_file):
-    """
-    Extracts audio from the uploaded video file and saves it as a temporary MP3 file.
-    """
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-        temp_video.write(uploaded_file.read())
-        temp_video_path = temp_video.name
+def naive_bar():
+    with st.sidebar:
+        st.title("My-Study-Buddy")
+        page = st.selectbox("Select an option", ["Talk with AI", "VTT"])
+    
+    return page
 
-    audio_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    audio_temp_path = audio_temp.name
+def talk_with_AI():
+    st.title("Talk with AI")
+    st.write("Feel free to ask anything about your study guide!")
+    
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
 
-    ffmpeg.input(temp_video_path).output(audio_temp_path).run()
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+    
+    user_input = st.chat_input("You: ", key="input")
 
-    os.remove(temp_video_path)
+    if user_input:
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-    return audio_temp_path
+        response = openai_config.get_response(user_input, st.session_state.messages)
+        
+        with st.chat_message("assistant"):
+            st.markdown(response)
 
-def transcribe_audio_to_text(audio_file_path):
-    """
-    Transcribes audio to text using OpenAI's Whisper model.
-    """
-    with open(audio_file_path, "rb") as audio_file:
-        response = openai.Audio.transcribe(model="whisper-1", file=audio_file)
 
-    return response["text"]
-
-def main():
+def VTT():
     st.title("VTT - Video to Text")
     st.write("This is a simple Video to Text generation application.")
     st.write("Upload your video file below:")
@@ -46,12 +47,22 @@ def main():
         st.write("File uploaded successfully!")
 
         
-        audio_file_path = extract_audio_from_video(uploaded_file)
+        audio_file_path = OpenAIConfig.extract_audio_from_video(uploaded_file)
         st.write("Audio extracted successfully!")
 
         
-        transcribed_text = transcribe_audio_to_text(audio_file_path)
+        transcribed_text = OpenAIConfig.transcribe_audio_to_text(audio_file_path)
         st.text_area("Transcribed Text", transcribed_text, height=400)
 
-if __name__ == "__main__":
-    main()
+
+def main():
+    page = naive_bar()
+    
+    if page == "Talk with AI":
+        talk_with_AI()
+    elif page == "VTT":
+        VTT()
+    
+
+
+main()

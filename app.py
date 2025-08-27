@@ -2,7 +2,7 @@ import streamlit as st
 from prompt import OpenAIConfig
 
 
-api_key = "api-key"
+api_key = "api"
 openai_config = OpenAIConfig(api_key=api_key)
 
 def naive_bar():
@@ -40,6 +40,8 @@ def VTT():
     st.write("This is a simple Video to Text generation application.")
     st.write("Upload your video file below:")
 
+    
+    
     uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
     if uploaded_file is not None:
@@ -53,6 +55,20 @@ def VTT():
         
         transcribed_text = OpenAIConfig.transcribe_audio_to_text(audio_file_path)
         st.text_area("Transcribed Text", transcribed_text, height=400)
+
+        
+        num_of_mcq = st.selectbox("Select number of MCQs to generate", options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], index=0)
+        quiz_btn = st.button("Generate Quiz")
+
+        if quiz_btn and transcribed_text:
+            try:
+                num = int(num_of_mcq)
+                st.subheader(f"Generated {num} MCQs")
+                mcqs = openai_config.generate_mcqs_from_text(transcribed_text, num)
+                st.markdown(mcqs)
+            except ValueError:
+                st.error("Please enter a valid number for MCQs.")
+
 
 
 def main():

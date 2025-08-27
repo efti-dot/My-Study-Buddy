@@ -5,7 +5,7 @@ import tempfile
 import os
 
 class OpenAIConfig:
-    def __init__(self, api_key: str = "api-key", model: str = "gpt-4o-mini"):
+    def __init__(self, api_key: str = "api", model: str = "gpt-4o-mini"):
         """
         Initializes the OpenAI API configuration with the given API key and model.
         """
@@ -63,3 +63,31 @@ class OpenAIConfig:
             response = openai.Audio.transcribe(model="whisper-1", file=audio_file)
 
         return response["text"]
+    
+    
+    #mcqs
+    def generate_mcqs_from_text(self, text: str, num_questions) -> str:
+        """
+        Generates MCQs with answers and reasoning from the given text using OpenAI.
+        """
+        prompt = f"""
+        Based on the following study material, generate {num_questions} multiple-choice questions.
+        Each question should include:
+        - The question itself
+        - Four answer options labeled A to D
+        - The correct answer
+        - A brief reasoning for the correct answer
+
+        Study Material:
+        \"\"\"{text}\"\"\"
+        """
+
+        response = openai.ChatCompletion.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that creates educational quizzes."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        return response.choices[0].message["content"]

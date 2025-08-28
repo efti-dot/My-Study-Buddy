@@ -12,7 +12,7 @@ class OpenAIConfig:
         self.api_key = api_key
         self.model = model
         openai.api_key = self.api_key
-        self.conversation_history = [{"role": "system", "content": "You are a helpful study guide assistant."}]
+        self.conversation_history = [{"role": "system", "content": "You are a helpful study guide assistant. Provide concise and accurate information."}]
 
     def get_response(self, prompt: str, history: list) -> str:
         """
@@ -33,36 +33,23 @@ class OpenAIConfig:
 
     def get_history(self):
         return self.conversation_history
-
-
     
-
-    #######VTT
-    def extract_audio_from_video(uploaded_file):
+    
+    #####ViTT&VoTT
+    def transcribe_audio_to_text(uploaded_file) -> str:
         """
-        Extracts audio from the uploaded video file and saves it as a temporary MP3 file.
+        Transcribes audio or video file directly using OpenAI's Whisper model.
         """
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-            temp_video.write(uploaded_file.read())
-            temp_video_path = temp_video.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
+            temp_file.write(uploaded_file.read())
+            temp_file_path = temp_file.name
 
-        audio_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        audio_temp_path = audio_temp.name
+        with open(temp_file_path, "rb") as file:
+            response = openai.Audio.transcribe(model="whisper-1", file=file)
 
-        ffmpeg.input(temp_video_path).output(audio_temp_path).run()
-
-        os.remove(temp_video_path)
-
-        return audio_temp_path
-
-    def transcribe_audio_to_text(audio_file_path):
-        """
-        Transcribes audio to text using OpenAI's Whisper model.
-        """
-        with open(audio_file_path, "rb") as audio_file:
-            response = openai.Audio.transcribe(model="whisper-1", file=audio_file)
-
+        os.remove(temp_file_path)
         return response["text"]
+    
     
     
     #mcqs
@@ -91,3 +78,6 @@ class OpenAIConfig:
         )
 
         return response.choices[0].message["content"]
+    
+
+    

@@ -8,7 +8,7 @@ openai_config = OpenAIConfig(api_key=api_key)
 def naive_bar():
     with st.sidebar:
         st.title("My-Study-Buddy")
-        page = st.selectbox("Select an option", ["Talk with AI", "VTT"])
+        page = st.selectbox("Select an option", ["Talk with AI", "ViTT", "VoTT"])
     
     return page
 
@@ -35,7 +35,7 @@ def talk_with_AI():
             st.markdown(response)
 
 
-def VTT():
+def ViTT():
     st.title("VTT - Video to Text")
     st.write("This is a simple Video to Text generation application.")
     st.write("Upload your video file below:")
@@ -49,15 +49,43 @@ def VTT():
         st.write("File uploaded successfully!")
 
         
-        audio_file_path = OpenAIConfig.extract_audio_from_video(uploaded_file)
-        st.write("Audio extracted successfully!")
+        transcribed_text = OpenAIConfig.transcribe_audio_to_text(uploaded_file)
+        st.text_area("Transcribed Text", transcribed_text, height=400)
+
 
         
-        transcribed_text = OpenAIConfig.transcribe_audio_to_text(audio_file_path)
+        num_of_mcq = st.selectbox("Select number of MCQs to generate", options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], index=0)
+        quiz_btn = st.button("Generate Quiz")
+
+        if quiz_btn and transcribed_text:
+            try:
+                num = int(num_of_mcq)
+                st.subheader(f"Generated {num} MCQs")
+                mcqs = openai_config.generate_mcqs_from_text(transcribed_text, num)
+                st.markdown(mcqs)
+            except ValueError:
+                st.error("Please enter a valid number for MCQs.")
+
+
+def VoTT():
+    st.title("VoTT - Voice to Text")
+    st.write("This is a simple Voice to Text generation application.")
+    st.write("Upload your audio file below:")
+
+    
+    
+    uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a"])
+
+    if uploaded_file is not None:
+        st.audio(uploaded_file)
+        st.write("File uploaded successfully!")
+
+        
+        transcribed_text = OpenAIConfig.transcribe_audio_to_text(uploaded_file)
         st.text_area("Transcribed Text", transcribed_text, height=400)
 
         
-        num_of_mcq = st.selectbox("Select number of MCQs to generate", options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], index=0)
+        num_of_mcq = st.selectbox("Select number of MCQs to generate", options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], index=0)
         quiz_btn = st.button("Generate Quiz")
 
         if quiz_btn and transcribed_text:
@@ -76,8 +104,10 @@ def main():
     
     if page == "Talk with AI":
         talk_with_AI()
-    elif page == "VTT":
-        VTT()
+    elif page == "ViTT":
+        ViTT()
+    elif page == "VoTT":
+        VoTT()
     
 
 

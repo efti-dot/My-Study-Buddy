@@ -1,9 +1,15 @@
 import streamlit as st
 from prompt import OpenAIConfig
+from dotenv import load_dotenv
+import os
 
 
-api_key = "api"
-openai_config = OpenAIConfig(api_key=api_key)
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    st.error("Please check the OPENAI_API_KEY.")
+
+ai = OpenAIConfig(api_key=api_key)
 
 def naive_bar():
     with st.sidebar:
@@ -29,7 +35,7 @@ def talk_with_AI():
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        response = openai_config.get_response(user_input, st.session_state.messages)
+        response = ai.get_response(user_input, st.session_state.messages)
         
         with st.chat_message("assistant"):
             st.markdown(response)

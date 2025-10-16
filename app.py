@@ -67,7 +67,7 @@ def ViTT():
             try:
                 num = int(num_of_mcq)
                 st.subheader(f"Generated {num} MCQs")
-                mcqs = openai_config.generate_mcqs_from_text(transcribed_text, num)
+                mcqs = ai.generate_mcqs_from_text(transcribed_text, num)
                 st.markdown(mcqs)
             except ValueError:
                 st.error("Please enter a valid number for MCQs.")
@@ -98,7 +98,7 @@ def VoTT():
             try:
                 num = int(num_of_mcq)
                 st.subheader(f"Generated {num} MCQs")
-                mcqs = openai_config.generate_mcqs_from_text(transcribed_text, num)
+                mcqs = ai.generate_mcqs_from_text(transcribed_text, num)
                 st.markdown(mcqs)
             except ValueError:
                 st.error("Please enter a valid number for MCQs.")

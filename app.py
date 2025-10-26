@@ -51,8 +51,13 @@ def ViTT():
     uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
     if uploaded_file is not None:
-        st.video(uploaded_file)
-        st.write("File uploaded successfully!")
+        file_size = len(uploaded_file.getvalue())
+        max_size = 50 * 1024 * 1024  # 50 MB
+
+        if file_size > max_size:
+            st.error("File too large! Please upload a video smaller than 50 MB.")
+        else:
+            st.video(uploaded_file)
 
         
         transcribed_text = OpenAIConfig.transcribe_audio_to_text(uploaded_file)

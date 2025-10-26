@@ -3,6 +3,7 @@ import ffmpeg
 import openai
 import tempfile
 import os
+from pathlib import Path
 
 class OpenAIConfig:
     def __init__(self, api_key: str = "api", model: str = "gpt-4o-mini"):
@@ -38,17 +39,47 @@ class OpenAIConfig:
     #####ViTT&VoTT
     def transcribe_audio_to_text(uploaded_file) -> str:
         """
-        Transcribes audio or video file directly using OpenAI's Whisper model.
+        Transcribes audio or video files (any size) using Whisper by chunking.
         """
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
-            temp_file.write(uploaded_file.read())
-            temp_file_path = temp_file.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_path = Path(tmpdir) / uploaded_file.name
+            with open(input_path, "wb") as f:
+                f.write(uploaded_file.read())
 
-        with open(temp_file_path, "rb") as file:
-            response = openai.Audio.transcribe(model="whisper-1", file=file)
+            # Step 1: Extract audio from video
+            audio_path = Path(tmpdir) / "audio.mp3"
+            ffmpeg.input(str(input_path)).output(
+                str(audio_path),
+                ac=1, ar="16000", format="mp3", loglevel="quiet"
+            ).run()
 
-        os.remove(temp_file_path)
-        return response["text"]
+            # Step 2: Split audio into ~20MB chunks
+            chunks_dir = Path(tmpdir) / "chunks"
+            chunks_dir.mkdir(exist_ok=True)
+            chunk_pattern = str(chunks_dir / "chunk_%03d.mp3")
+
+            # Each 600s (~10min) chunk ~20MB depending on bitrate
+            ffmpeg.input(str(audio_path)).output(
+                chunk_pattern,
+                f="segment",
+                segment_time=600,  # 10 minutes
+                c="copy",
+                loglevel="quiet"
+            ).run()
+
+            # Step 3: Transcribe each chunk
+            transcripts = []
+            for chunk_file in sorted(chunks_dir.glob("chunk_*.mp3")):
+                with open(chunk_file, "rb") as audio_chunk:
+                    response = openai.Audio.transcribe(
+                    "whisper-1",
+                    file=audio_chunk
+                )
+                    transcripts.append(response.text.strip())
+
+            # Step 4: Merge results
+            full_text = "\n".join(transcripts)
+            return full_text
     
     
     

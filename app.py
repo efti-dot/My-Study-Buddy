@@ -48,7 +48,7 @@ def ViTT():
 
     
     
-    uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
+    uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi", "m4a"])
 
     if uploaded_file is not None:
         file_size = len(uploaded_file.getvalue())
@@ -66,13 +66,15 @@ def ViTT():
 
         
         num_of_mcq = st.selectbox("Select number of MCQs to generate", options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], index=0)
+        additional_instructions = st.text_area("Additional Instructions (optional)", height=100)
         quiz_btn = st.button("Generate Quiz")
 
         if quiz_btn and transcribed_text:
             try:
                 num = int(num_of_mcq)
                 st.subheader(f"Generated {num} MCQs")
-                mcqs = ai.generate_mcqs_from_text(transcribed_text, num)
+
+                mcqs = ai.generate_mcqs_from_text(transcribed_text, num, additional_instructions)
                 st.markdown(mcqs)
             except ValueError:
                 st.error("Please enter a valid number for MCQs.")

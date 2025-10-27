@@ -84,18 +84,26 @@ class OpenAIConfig:
     
     
     #mcqs
-    def generate_mcqs_from_text(self, text: str, num_questions) -> str:
+    def generate_mcqs_from_text(self, text: str, num_questions, additional_instructions: str = None) -> str:
         """
         Generates MCQs with answers and reasoning from the given text using OpenAI.
+        Optionally takes additional user instructions to refine the output.
         """
-        prompt = f"""
+        base_prompt = f"""
         Based on the following study material, generate {num_questions} multiple-choice questions.
         Each question should include:
         - The question itself
         - Four answer options labeled A to D
         - The correct answer
         - A brief reasoning for the correct answer
+        """
 
+        # Add additional instructions if provided
+        if additional_instructions and additional_instructions.strip():
+            base_prompt += f"\n\nFollow these additional instructions carefully:\n{additional_instructions.strip()}"
+
+        base_prompt += f"""
+        
         Study Material:
         \"\"\"{text}\"\"\"
         """
@@ -104,7 +112,7 @@ class OpenAIConfig:
             model=self.model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates educational quizzes."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": base_prompt}
             ]
         )
 

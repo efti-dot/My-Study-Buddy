@@ -128,5 +128,45 @@ class OpenAIConfig:
         return response.choices[0].message["content"]
 
     
+    def generate_true_false_from_text(self, text: str, num_questions, additional_instructions: str = None) -> str:
+        """
+        Generates True/False questions with answers and reasoning from the given text using OpenAI.
+        Optionally takes additional user instructions to refine the output.
+        """
 
+        # Heuristic: Require at least 10 words per question
+        word_count = len(text.split())
+        min_words_required = num_questions * 10
+
+        if word_count < min_words_required:
+            return (
+                f"⚠️ The provided text has only {word_count} words, which is too short to generate {num_questions} True/False questions reliably.\n"
+                f"Please provide more content or reduce the number of questions to {word_count // 10} or fewer."
+            )
+
+        base_prompt = f"""
+        Based on the following study material, generate {num_questions} True/False questions.
+        Each question should include:
+        - The question itself
+        - The correct answer (True or False)
+        - A brief reasoning for the correct answer
+        """
+
+        if additional_instructions and additional_instructions.strip():
+            base_prompt += f"\n\nFollow these additional instructions carefully:\n{additional_instructions.strip()}"
+
+        base_prompt += f"""
+        Study Material:
+        \"\"\"{text}\"\"\"
+        """
+
+        response = openai.ChatCompletion.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that creates educational True/False."},
+                {"role": "user", "content": base_prompt}
+            ]
+        )
+
+        return response.choices[0].message["content"]
     

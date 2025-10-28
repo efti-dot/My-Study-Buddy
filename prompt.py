@@ -89,6 +89,17 @@ class OpenAIConfig:
         Generates MCQs with answers and reasoning from the given text using OpenAI.
         Optionally takes additional user instructions to refine the output.
         """
+
+        # Heuristic: Require at least 20 words per MCQ
+        word_count = len(text.split())
+        min_words_required = num_questions * 20
+
+        if word_count < min_words_required:
+            return (
+                f"⚠️ The provided text has only {word_count} words, which is too short to generate {num_questions} MCQs reliably.\n"
+                f"Please provide more content or reduce the number of questions to {word_count // 20} or fewer."
+            )
+
         base_prompt = f"""
         Based on the following study material, generate {num_questions} multiple-choice questions.
         Each question should include:
@@ -98,12 +109,10 @@ class OpenAIConfig:
         - A brief reasoning for the correct answer
         """
 
-        # Add additional instructions if provided
         if additional_instructions and additional_instructions.strip():
             base_prompt += f"\n\nFollow these additional instructions carefully:\n{additional_instructions.strip()}"
 
         base_prompt += f"""
-        
         Study Material:
         \"\"\"{text}\"\"\"
         """
@@ -117,6 +126,7 @@ class OpenAIConfig:
         )
 
         return response.choices[0].message["content"]
+
     
 
     

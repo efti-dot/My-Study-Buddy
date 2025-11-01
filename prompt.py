@@ -90,7 +90,6 @@ class OpenAIConfig:
         Optionally takes additional user instructions to refine the output.
         """
 
-        # Heuristic: Require at least 20 words per MCQ
         word_count = len(text.split())
         min_words_required = num_questions * 20
 
@@ -128,13 +127,13 @@ class OpenAIConfig:
         return response.choices[0].message["content"]
 
     
+    #True/False
     def generate_true_false_from_text(self, text: str, num_questions, additional_instructions: str = None) -> str:
         """
         Generates True/False questions with answers and reasoning from the given text using OpenAI.
         Optionally takes additional user instructions to refine the output.
         """
 
-        # Heuristic: Require at least 10 words per question
         word_count = len(text.split())
         min_words_required = num_questions * 10
 
@@ -171,13 +170,13 @@ class OpenAIConfig:
         return response.choices[0].message["content"]
     
 
+    #Matching Questions
     def generate_matching_questions_from_text(self, text: str, num_questions, additional_instructions: str = None) -> str:
         """
         Generates Matching questions with answers and reasoning from the given text using OpenAI.
         Optionally takes additional user instructions to refine the output.
         """
 
-        # Heuristic: Require at least 15 words per question
         word_count = len(text.split())
         min_words_required = num_questions * 15
 

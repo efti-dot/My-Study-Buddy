@@ -2,6 +2,9 @@ import streamlit as st
 from prompt import OpenAIConfig
 from dotenv import load_dotenv
 import os
+import tempfile
+from pathlib import Path
+import yt_dlp
 
 
 load_dotenv()
@@ -14,7 +17,7 @@ ai = OpenAIConfig(api_key=api_key)
 def naive_bar():
     with st.sidebar:
         st.title("My-Study-Buddy")
-        page = st.selectbox("Select an option", ["Talk with AI", "ViTT", "VoTT"])
+        page = st.selectbox("Select an option", ["Talk with AI", "ViTT", "VoTT", "Link2Text"])
     
     return page
 
@@ -139,6 +142,50 @@ def VoTT():
                 st.markdown(mcqs)
             except ValueError:
                 st.error("Please enter a valid number for MCQs.")
+
+
+
+def Link2Text():
+    st.title("Link2Text - Paste URL to Transcribe")
+    st.write("Paste a YouTube or direct audio/video link below:")
+
+    url = st.text_input("Enter the URL here:")
+
+    if url:
+        st.write("Processing URL...")
+        with st.spinner("Downloading and transcribing..."):
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    output_path = Path(tmpdir) / "media.mp4"
+
+                    # YouTube download
+                    if "youtube.com" in url or "youtu.be" in url:
+                        downloaded = OpenAIConfig.download_youtube_audio(url, output_path)
+                    else:
+                        downloaded = OpenAIConfig.download_direct_file(url, output_path)
+
+                    if not downloaded or not Path(output_path).exists():
+                        st.error("Failed to download media from the provided URL.")
+                        return
+
+
+                    # Wrap as dummy file-like object
+                    with open(output_path, "rb") as f:
+                        class DummyFile:
+                            def __init__(self, name, data):
+                                self.name = name
+                                self.data = data
+                            def read(self):
+                                return self.data
+
+                        dummy_file = DummyFile("url_audio.mp4", f.read())
+                        transcribed_text = OpenAIConfig.transcribe_audio_to_text(dummy_file)
+
+                    st.text_area("Transcribed Text", transcribed_text, height=400)
+
+            except Exception as e:
+                st.error(f"Error during processing: {e}")
+
                 
 
 
@@ -152,6 +199,8 @@ def main():
         ViTT()
     elif page == "VoTT":
         VoTT()
+    elif page == "Link2Text":
+        Link2Text()
     
 
 

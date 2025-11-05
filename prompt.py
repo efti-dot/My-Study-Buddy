@@ -1,9 +1,12 @@
 import openai
-import ffmpeg
 import openai
 import tempfile
 import os
 from pathlib import Path
+import yt_dlp
+import requests
+from pydub import AudioSegment
+
 
 class OpenAIConfig:
     def __init__(self, api_key: str = "api", model: str = "gpt-4o-mini"):
@@ -39,49 +42,91 @@ class OpenAIConfig:
     #####ViTT&VoTT
     def transcribe_audio_to_text(uploaded_file) -> str:
         """
-        Transcribes audio or video files (any size) using Whisper by chunking.
+        Transcribes audio or video files using OpenAI Whisper.
+        No ffmpeg used. Automatically handles supported formats like .mp3, .mp4, .m4a, .webm.
         """
+        CHUNK_LENGTH_MS = 60 * 1000  # 60 seconds per chunk
+
         with tempfile.TemporaryDirectory() as tmpdir:
             input_path = Path(tmpdir) / uploaded_file.name
             with open(input_path, "wb") as f:
                 f.write(uploaded_file.read())
 
-            # Step 1: Extract audio from video
-            audio_path = Path(tmpdir) / "audio.mp3"
-            ffmpeg.input(str(input_path)).output(
-                str(audio_path),
-                ac=1, ar="16000", format="mp3", loglevel="quiet"
-            ).run()
+            # Load audio using pydub (auto handles .mp3, .mp4, .m4a, .webm if ffmpeg is installed)
+            try:
+                audio = AudioSegment.from_file(input_path)
+            except Exception as e:
+                print("❌ Failed to load audio:", e)
+                return "❌ Unsupported or unreadable audio format."
 
-            # Step 2: Split audio into ~20MB chunks
-            chunks_dir = Path(tmpdir) / "chunks"
-            chunks_dir.mkdir(exist_ok=True)
-            chunk_pattern = str(chunks_dir / "chunk_%03d.mp3")
+            chunks = [audio[i:i + CHUNK_LENGTH_MS] for i in range(0, len(audio), CHUNK_LENGTH_MS)]
+            full_transcript = []
 
-            # Each 600s (~10min) chunk ~20MB depending on bitrate
-            ffmpeg.input(str(audio_path)).output(
-                chunk_pattern,
-                f="segment",
-                segment_time=600,  # 10 minutes
-                c="copy",
-                loglevel="quiet"
-            ).run()
+            for i, chunk in enumerate(chunks):
+                chunk_path = Path(tmpdir) / f"chunk_{i}.mp3"
+                chunk.export(chunk_path, format="mp3")
 
-            # Step 3: Transcribe each chunk
-            transcripts = []
-            for chunk_file in sorted(chunks_dir.glob("chunk_*.mp3")):
-                with open(chunk_file, "rb") as audio_chunk:
-                    response = openai.Audio.transcribe(
-                    "whisper-1",
-                    file=audio_chunk
-                )
-                    transcripts.append(response.text.strip())
+                try:
+                    with open(chunk_path, "rb") as f:
+                        result = openai.Audio.transcribe("whisper-1", file=f)
+                        full_transcript.append(result["text"].strip())
+                except Exception as e:
+                    print(f"❌ Transcription error on chunk {i}:", e)
+                    full_transcript.append("[Untranscribed segment]")
 
-            # Step 4: Merge results
-            full_text = "\n".join(transcripts)
-            return full_text
-    
-    
+            return "\n".join(full_transcript)
+
+        
+
+    def download_youtube_audio(url, output_path):
+        """
+        Downloads YouTube audio in .m4a format without using ffmpeg.
+        """
+        ydl_opts = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',  # Whisper can read .m4a directly
+            'outtmpl': str(output_path),
+            'quiet': True,
+            'noplaylist': True,
+            'extractor_args': {
+                'youtube': [
+                    'player_client=android',
+                    'skip_sabr_check=True'
+                ]
+            },
+            'postprocessors': []  # IMPORTANT → remove FFmpeg dependency
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            return output_path if Path(output_path).exists() else None
+        except Exception as e:
+            print(f"❌ YouTube download error: {e}")
+            return None
+
+
+        
+
+    def download_direct_file(url, output_path):
+        """
+        Downloads a direct audio/video file from a URL with streaming and error handling.
+        """
+        try:
+            response = requests.get(url, stream=True, timeout=30)
+            response.raise_for_status()  # Raise error for bad status codes
+            
+            # Stream download for large files
+            with open(output_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:  # Filter out keep-alive chunks
+                        f.write(chunk)
+            
+            return output_path
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading direct file: {e}")
+            return None
+        
     
     #mcqs
     def generate_mcqs_from_text(self, text: str, num_questions, additional_instructions: str = None) -> str:
@@ -106,6 +151,20 @@ class OpenAIConfig:
         - Four answer options labeled A to D
         - The correct answer
         - A brief reasoning for the correct answer
+
+        IMPORTANT: You must respond ONLY with valid JSON. Do not include any text before or after the JSON.
+        Generate a JSON response with this exact structure:
+        {{
+            "question": "<question>",
+            "options": {{
+                "A": "<option_a>",
+                "B": "<option_b>",
+                "C": "<option_c>",
+                "D": "<option_d>"
+            }},
+            "correct_answer": "<correct_answer>",
+            "reasoning": "<reasoning>"
+        }}
         """
 
         if additional_instructions and additional_instructions.strip():

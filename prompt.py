@@ -154,17 +154,20 @@ class OpenAIConfig:
 
         IMPORTANT: You must respond ONLY with valid JSON. Do not include any text before or after the JSON.
         Generate a JSON response with this exact structure:
+        [
         {{
-            "question": "<question>",
-            "options": {{
-                "A": "<option_a>",
-                "B": "<option_b>",
-                "C": "<option_c>",
-                "D": "<option_d>"
-            }},
+            "question_text": "<question>",
             "correct_answer": "<correct_answer>",
-            "reasoning": "<reasoning>"
-        }}
+            "reasoning": "<reasoning>",
+            "options": [
+                {{"key": "A", "text": "<option_a>"}},
+                {{"key": "B", "text": "<option_b>"}},
+                {{"key": "C", "text": "<option_c>"}},
+                {{"key": "D", "text": "<option_d>"}}
+            ]
+        }},
+        ...
+        ]
         """
 
         if additional_instructions and additional_instructions.strip():

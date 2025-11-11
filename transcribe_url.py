@@ -28,7 +28,7 @@ def download_youtube_audio(url, output_dir):
                 'skip_sabr_check=True'
             ]
         },
-        'postprocessors': []  # No ffmpeg dependency
+        'postprocessors': []
     }
 
     try:
@@ -36,7 +36,7 @@ def download_youtube_audio(url, output_dir):
             ydl.download([url])
         return output_path if output_path.exists() else None
     except Exception as e:
-        print(f"❌ YouTube download error: {e}")
+        print(f"YouTube download error: {e}")
         return None
 
 
@@ -52,7 +52,7 @@ def download_direct_file(url, output_path):
                 f.write(chunk)
         return output_path
     except Exception as e:
-        print(f"❌ Direct download error: {e}")
+        print(f"Direct download error: {e}")
         return None
 
 
@@ -65,7 +65,7 @@ def transcribe_audio(audio_path):
             response = openai.Audio.transcribe("whisper-1", f)
         return response.text.strip()
     except Exception as e:
-        print(f"❌ Whisper transcription error: {e}")
+        print(f"Whisper transcription error: {e}")
         return None
 
 
@@ -79,17 +79,17 @@ def main():
             audio_path = download_direct_file(url, Path(tmpdir) / "downloaded_file.m4a")
 
         if not audio_path or not Path(audio_path).exists():
-            print("❌ Failed to download or locate audio file.")
+            print("Failed to download or locate audio file.")
             return
 
-        print("✅ Media downloaded. Transcribing...")
+        print("Media downloaded. Transcribing...")
         transcript = transcribe_audio(audio_path)
 
         if transcript:
-            print("\n📄 Transcribed Text:\n")
+            print("\nTranscribed Text:\n")
             print(transcript)
         else:
-            print("❌ Transcription failed.")
+            print("Transcription failed.")
 
 
 if __name__ == "__main__":

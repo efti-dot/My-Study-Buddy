@@ -6,6 +6,7 @@ from pathlib import Path
 import yt_dlp
 import requests
 from pydub import AudioSegment
+import json
 
 
 class OpenAIConfig:
@@ -79,17 +80,17 @@ class OpenAIConfig:
         
     def transcribe_from_url(url: str) -> str:
         """
-        Downloads audio from a YouTube URL and returns transcribed text.
+        Downloads audio from a YouTube URL and returns transcribed text as JSON.
         """
         if not ("youtube.com" in url or "youtu.be" in url):
-            return "Only YouTube URLs are supported."
+            return "error: Only YouTube URLs are supported."
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "media.m4a"
             downloaded = OpenAIConfig.download_youtube_audio(url, output_path)
 
             if not downloaded or not Path(output_path).exists():
-                return "Failed to download media from the YouTube URL."
+                return "error: Failed to download media from the YouTube URL."
 
             with open(output_path, "rb") as f:
                 class DummyFile:
@@ -100,7 +101,12 @@ class OpenAIConfig:
                         return self.data
 
                 dummy_file = DummyFile("youtube_audio.m4a", f.read())
-                return OpenAIConfig.transcribe_audio_to_text(dummy_file)
+                transcript = OpenAIConfig.transcribe_audio_to_text(dummy_file)
+
+            return json.dumps({
+                "transcription": transcript
+            }, ensure_ascii=False, indent=2)
+
     
     
     def download_youtube_audio(url, output_path):

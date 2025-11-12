@@ -146,19 +146,24 @@ def VoTT():
 
 
 def Link2Text():
-        st.title("Link2Text - YouTube Transcription Only")
-        st.write("Paste a YouTube video link below to transcribe its audio:")
+    st.title("Link2Text - YouTube Transcription (JSON Output)")
+    st.write("Paste a YouTube video link below to transcribe its audio:")
 
-        url = st.text_input("Enter YouTube URL here:")
+    url = st.text_input("Enter YouTube URL here:")
 
-        if url:
-            st.write("Processing YouTube URL...")
-            with st.spinner("Downloading and transcribing..."):
-                try:
-                    transcribed_text = OpenAIConfig.transcribe_from_url(url)
-                    st.text_area("Transcribed Text", transcribed_text, height=400)
-                except Exception as e:
-                    st.error(f"Error during processing: {e}")
+    if url:
+        if not ("youtube.com" in url or "youtu.be" in url):
+            st.error("Only YouTube URLs are supported.")
+            return
+
+        st.write("Processing YouTube URL...")
+        with st.spinner("Downloading and transcribing..."):
+            try:
+                json_output = OpenAIConfig.transcribe_from_url(url)
+                st.code(json_output, language="json")
+            except Exception as e:
+                st.error(f"Error during processing: {e}")
+
 
 
                 

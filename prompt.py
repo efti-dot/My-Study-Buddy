@@ -56,8 +56,8 @@ class OpenAIConfig:
             try:
                 audio = AudioSegment.from_file(input_path)
             except Exception as e:
-                print("❌ Failed to load audio:", e)
-                return "❌ Unsupported or unreadable audio format."
+                print("Failed to load audio:", e)
+                return "Unsupported or unreadable audio format."
 
             chunks = [audio[i:i + CHUNK_LENGTH_MS] for i in range(0, len(audio), CHUNK_LENGTH_MS)]
             full_transcript = []
@@ -71,19 +71,44 @@ class OpenAIConfig:
                         result = openai.Audio.transcribe("whisper-1", file=f)
                         full_transcript.append(result["text"].strip())
                 except Exception as e:
-                    print(f"❌ Transcription error on chunk {i}:", e)
+                    print(f"Transcription error on chunk {i}:", e)
                     full_transcript.append("[Untranscribed segment]")
 
             return "\n".join(full_transcript)
 
         
+    def transcribe_from_url(url: str) -> str:
+        """
+        Downloads audio from a YouTube URL and returns transcribed text.
+        """
+        if not ("youtube.com" in url or "youtu.be" in url):
+            return "Only YouTube URLs are supported."
 
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "media.m4a"
+            downloaded = OpenAIConfig.download_youtube_audio(url, output_path)
+
+            if not downloaded or not Path(output_path).exists():
+                return "Failed to download media from the YouTube URL."
+
+            with open(output_path, "rb") as f:
+                class DummyFile:
+                    def __init__(self, name, data):
+                        self.name = name
+                        self.data = data
+                    def read(self):
+                        return self.data
+
+                dummy_file = DummyFile("youtube_audio.m4a", f.read())
+                return OpenAIConfig.transcribe_audio_to_text(dummy_file)
+    
+    
     def download_youtube_audio(url, output_path):
         """
         Downloads YouTube audio in .m4a format without using ffmpeg.
         """
         ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio/best',  # Whisper can read .m4a directly
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'outtmpl': str(output_path),
             'quiet': True,
             'noplaylist': True,
@@ -93,39 +118,20 @@ class OpenAIConfig:
                     'skip_sabr_check=True'
                 ]
             },
-            'postprocessors': []  # IMPORTANT → remove FFmpeg dependency
+            'postprocessors': [
+                
+            ]
         }
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
+                print(f"Output patyh is here:::::: {output_path}")
             return output_path if Path(output_path).exists() else None
         except Exception as e:
-            print(f"❌ YouTube download error: {e}")
+            print(f"YouTube download error: {e}")
             return None
 
-
-        
-
-    def download_direct_file(url, output_path):
-        """
-        Downloads a direct audio/video file from a URL with streaming and error handling.
-        """
-        try:
-            response = requests.get(url, stream=True, timeout=30)
-            response.raise_for_status()  # Raise error for bad status codes
-            
-            # Stream download for large files
-            with open(output_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:  # Filter out keep-alive chunks
-                        f.write(chunk)
-            
-            return output_path
-        
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading direct file: {e}")
-            return None
         
     
     #mcqs
@@ -140,7 +146,7 @@ class OpenAIConfig:
 
         if word_count < min_words_required:
             return (
-                f"⚠️ The provided text has only {word_count} words, which is too short to generate {num_questions} MCQs reliably.\n"
+                f"The provided text has only {word_count} words, which is too short to generate {num_questions} MCQs reliably.\n"
                 f"Please provide more content or reduce the number of questions to {word_count // 20} or fewer."
             )
 
@@ -201,7 +207,7 @@ class OpenAIConfig:
 
         if word_count < min_words_required:
             return (
-                f"⚠️ The provided text has only {word_count} words, which is too short to generate {num_questions} True/False questions reliably.\n"
+                f"The provided text has only {word_count} words, which is too short to generate {num_questions} True/False questions reliably.\n"
                 f"Please provide more content or reduce the number of questions to {word_count // 10} or fewer."
             )
 
@@ -244,7 +250,7 @@ class OpenAIConfig:
 
         if word_count < min_words_required:
             return (
-                f"⚠️ The provided text has only {word_count} words, which is too short to generate {num_questions} Matching questions reliably.\n"
+                f"The provided text has only {word_count} words, which is too short to generate {num_questions} Matching questions reliably.\n"
                 f"Please provide more content or reduce the number of questions to {word_count // 15} or fewer."
             )
 

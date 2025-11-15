@@ -75,7 +75,11 @@ class OpenAIConfig:
                     print(f"Transcription error on chunk {i}:", e)
                     full_transcript.append("[Untranscribed segment]")
 
-            return "\n".join(full_transcript)
+            full_transcription = " ".join(full_transcript).replace("\n", " ").strip()
+
+            return json.dumps({
+                "transcription": full_transcription
+            }, ensure_ascii=False, indent=2)
 
         
     def transcribe_from_url(url: str) -> str:
@@ -103,8 +107,10 @@ class OpenAIConfig:
                 dummy_file = DummyFile("youtube_audio.m4a", f.read())
                 transcript = OpenAIConfig.transcribe_audio_to_text(dummy_file)
 
+            cleaned_transcript = transcript.replace("\n", " ").strip()
+
             return json.dumps({
-                "transcription": transcript
+                "transcription": cleaned_transcript
             }, ensure_ascii=False, indent=2)
 
     

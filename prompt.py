@@ -7,33 +7,38 @@ import yt_dlp
 import requests
 from pydub import AudioSegment
 import json
+from openai import OpenAI
+
+
+from dotenv import load_dotenv
+load_dotenv()
+
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class OpenAIConfig:
-    def __init__(self, api_key: str = "api", model: str = "gpt-4o-mini"):
+    def __init__(self, api_key: str = api_key, model: str = "gpt-4o-mini"):
         """
         Initializes the OpenAI API configuration with the given API key and model.
         """
-        self.api_key = api_key
+        self.client = OpenAI(api_key=api_key)
         self.model = model
-        openai.api_key = self.api_key
-        self.conversation_history = [{"role": "system", "content": "You are a helpful study guide assistant. Provide concise and accurate information."}]
+        self.conversation_history = [
+            {"role": "system", "content": "You are a helpful study guide assistant."}
+        ]
+
 
     def get_response(self, prompt: str, history: list) -> str:
-        """
-        Sends a prompt to the OpenAI API and returns the response text.
-        Maintains conversation history for context.
-        """
         history.append({"role": "user", "content": prompt})
-
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model,
             messages=history
         )
-
-        reply = response.choices[0].message['content']
+        reply = response.choices[0].message.content
         history.append({"role": "assistant", "content": reply})
         return reply
+
     
 
     def get_history(self):
@@ -44,16 +49,15 @@ class OpenAIConfig:
     def transcribe_audio_to_text(uploaded_file) -> str:
         """
         Transcribes audio or video files using OpenAI Whisper.
-        No ffmpeg used. Automatically handles supported formats like .mp3, .mp4, .m4a, .webm.
         """
-        CHUNK_LENGTH_MS = 60 * 1000  # 60 seconds per chunk
+        CHUNK_LENGTH_MS = 60 * 1000 #60sec chunks
 
         with tempfile.TemporaryDirectory() as tmpdir:
             input_path = Path(tmpdir) / uploaded_file.name
             with open(input_path, "wb") as f:
                 f.write(uploaded_file.read())
 
-            # Load audio using pydub (auto handles .mp3, .mp4, .m4a, .webm if ffmpeg is installed)
+            # Load audio using pydub
             try:
                 audio = AudioSegment.from_file(input_path)
             except Exception as e:
@@ -69,8 +73,11 @@ class OpenAIConfig:
 
                 try:
                     with open(chunk_path, "rb") as f:
-                        result = openai.Audio.transcribe("whisper-1", file=f)
-                        full_transcript.append(result["text"].strip())
+                        result = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=f
+                        )
+                        full_transcript.append(result.text.strip())
                 except Exception as e:
                     print(f"Transcription error on chunk {i}:", e)
                     full_transcript.append("[Untranscribed segment]")
@@ -80,6 +87,7 @@ class OpenAIConfig:
             return json.dumps({
                 "transcription": full_transcription
             }, ensure_ascii=False, indent=2)
+
 
         
     def transcribe_from_url(url: str) -> str:
@@ -196,15 +204,13 @@ class OpenAIConfig:
         \"\"\"{text}\"\"\"
         """
 
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates educational quizzes."},
-                {"role": "user", "content": base_prompt}
-            ]
+            messages=[{"role": "system", "content": "You are a helpful assistant that creates educational quizzes."},
+                    {"role": "user", "content": base_prompt}]
         )
+        return response.choices[0].message.content
 
-        return response.choices[0].message["content"]
 
     
     #True/False
@@ -238,16 +244,14 @@ class OpenAIConfig:
         Study Material:
         \"\"\"{text}\"\"\"
         """
-
-        response = openai.ChatCompletion.create(
+    
+        response = self.client.chat.completions.create(
             model=self.model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates educational True/False."},
-                {"role": "user", "content": base_prompt}
-            ]
+            messages=[{"role": "system", "content": "You are a helpful assistant that creates educational True/False."},
+                    {"role": "user", "content": base_prompt}]
         )
+        return response.choices[0].message.content
 
-        return response.choices[0].message["content"]
     
 
     #Matching Questions
@@ -283,13 +287,10 @@ class OpenAIConfig:
         \"\"\"{text}\"\"\"
         """
 
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates educational matching quizzes."},
-                {"role": "user", "content": base_prompt}
-            ]
+            messages=[{"role": "system", "content": "You are a helpful assistant that creates educational matching quizzes."},
+                    {"role": "user", "content": base_prompt}]
         )
-
-        return response.choices[0].message["content"]
+        return response.choices[0].message.content
     
